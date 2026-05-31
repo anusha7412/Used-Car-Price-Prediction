@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Car Price Predictor</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f3ee;
+      --surface: #ffffff;
+      --text: #1a1a18;
+      --muted: #6b6b65;
+      --accent: #c84b2f;
+      --accent-light: #faeae6;
+      --border: #e0ddd7;
+      --radius: 14px;
+      --font-display: 'DM Serif Display', serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--text);
+      color: #fff;
+      padding: 2rem 2.5rem;
+      display: flex;
+      align-items: flex-end;
+      gap: 1rem;
+    }
+
+    header h1 {
+      font-family: var(--font-display);
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 400;
+      line-height: 1.1;
+      flex: 1;
+    }
+
+    header p {
+      font-size: 13px;
+      color: #aaa;
+      max-width: 200px;
+      text-align: right;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+
+    .field {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: border-color 0.2s;
+    }
+
+    .field:focus-within { border-color: var(--accent); }
+
+    .field label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .field input, .field select {
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--text);
+      border: none;
+      outline: none;
+      background: transparent;
+      width: 100%;
+      padding: 0;
+    }
+
+    .field select { cursor: pointer; }
+
+    .field .hint {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .field.error { border-color: #e24b4a; }
+    .field.error label { color: #e24b4a; }
+
+    .predict-btn {
+      width: 100%;
+      padding: 16px;
+      background: var(--accent);
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 500;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      margin-bottom: 20px;
+    }
+
+    .predict-btn:hover { opacity: 0.9; }
+    .predict-btn:active { transform: scale(0.99); }
+    .predict-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .result-card {
+      background: var(--text);
+      color: #fff;
+      border-radius: var(--radius);
+      padding: 2rem;
+      display: none;
+      margin-bottom: 20px;
+      animation: slideUp 0.3s ease;
+    }
+
+    .result-card.visible { display: block; }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-label {
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 8px;
+    }
+
+    .result-price {
+      font-family: var(--font-display);
+      font-size: clamp(2.2rem, 6vw, 3.5rem);
+      color: #fff;
+      line-height: 1;
+      margin-bottom: 1.5rem;
+    }
+
+    .result-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      padding-top: 1.25rem;
+    }
+
+    .meta-item { display: flex; flex-direction: column; gap: 3px; }
+    .meta-item span:first-child { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+    .meta-item span:last-child { font-size: 13px; color: #ddd; }
+
+    .error-card {
+      background: #fff0f0;
+      border: 1px solid #fca5a5;
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      font-size: 13px;
+      color: #b91c1c;
+      display: none;
+      margin-bottom: 20px;
+    }
+
+    .error-card.visible { display: block; }
+
+    .loading-dots span {
+      display: inline-block;
+      animation: blink 1.2s infinite;
+    }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%,80%,100% { opacity: 0.2; } 40% { opacity: 1; } }
+
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      padding: 2rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Car Price<br>Predictor</h1>
+  <p>ML-powered estimate using Gradient Boosting</p>
+</header>
+
+<div class="container">
+
+  <div class="form-grid">
+    <div class="field" id="f-age">
+      <label>Vehicle Age (years)</label>
+      <input type="number" id="vehicle_age" min="0" max="50" placeholder="e.g. 5"/>
+    </div>
+    <div class="field" id="f-km">
+      <label>Km Driven</label>
+      <input type="number" id="km_driven" min="0" placeholder="e.g. 50000"/>
+    </div>
+    <div class="field" id="f-fuel">
+      <label>Fuel Type</label>
+      <select id="fuel_type">
+        <option value="">Select fuel type</option>
+        <option value="0">CNG</option>
+        <option value="1">Diesel</option>
+        <option value="2">Electric</option>
+        <option value="3">LPG</option>
+        <option value="4">Petrol</option>
+      </select>
+    </div>
+    <div class="field" id="f-trans">
+      <label>Transmission</label>
+      <select id="transmission_type">
+        <option value="">Select transmission</option>
+        <option value="0">Automatic</option>
+        <option value="1">Manual</option>
+      </select>
+    </div>
+    <div class="field" id="f-seller">
+      <label>Seller Type</label>
+      <select id="seller_type">
+        <option value="">Select seller type</option>
+        <option value="0">Dealer</option>
+        <option value="1">Individual</option>
+        <option value="2">Trustmark Dealer</option>
+      </select>
+    </div>
+    <div class="field" id="f-seats">
+      <label>Seats</label>
+      <input type="number" id="seats" min="2" max="14" placeholder="e.g. 5"/>
+    </div>
+    <div class="field" id="f-mileage">
+      <label>Mileage (km/l)</label>
+      <input type="number" id="mileage" min="0" step="0.1" placeholder="e.g. 20.0"/>
+    </div>
+    <div class="field" id="f-engine">
+      <label>Engine (cc)</label>
+      <input type="number" id="engine" min="0" placeholder="e.g. 1500"/>
+    </div>
+    <div class="field" id="f-power">
+      <label>Max Power (bhp)</label>
+      <input type="number" id="max_power" min="0" step="0.1" placeholder="e.g. 100"/>
+    </div>
+  </div>
+
+  <div class="error-card" id="errorCard"></div>
+
+  <button class="predict-btn" id="predictBtn" onclick="predict()">Predict Price</button>
+
+  <div class="result-card" id="resultCard">
+    <div class="result-label">Estimated selling price</div>
+    <div class="result-price" id="resultPrice">—</div>
+    <div class="result-meta" id="resultMeta"></div>
+  </div>
+
+</div>
+
+<footer>Powered by Gradient Boosting · CarDekho Dataset</footer>
+
+<script>
+  const API_URL = "http://localhost:8000"; // Change this to your deployed backend URL
+
+  function val(id) { return document.getElementById(id).value.trim(); }
+
+  function setError(fieldId, hasError) {
+    document.getElementById(fieldId).classList.toggle('error', hasError);
+  }
+
+  function validate() {
+    const fields = [
+      { id: 'f-age',     value: val('vehicle_age'),       check: v => v !== '' && Number(v) >= 0 },
+      { id: 'f-km',      value: val('km_driven'),          check: v => v !== '' && Number(v) >= 0 },
+      { id: 'f-fuel',    value: val('fuel_type'),           check: v => v !== '' },
+      { id: 'f-trans',   value: val('transmission_type'),  check: v => v !== '' },
+      { id: 'f-seller',  value: val('seller_type'),         check: v => v !== '' },
+      { id: 'f-seats',   value: val('seats'),              check: v => v !== '' && Number(v) >= 2 },
+      { id: 'f-mileage', value: val('mileage'),            check: v => v !== '' && Number(v) >= 0 },
+      { id: 'f-engine',  value: val('engine'),             check: v => v !== '' && Number(v) > 0 },
+      { id: 'f-power',   value: val('max_power'),          check: v => v !== '' && Number(v) > 0 },
+    ];
+    let valid = true;
+    fields.forEach(f => {
+      const ok = f.check(f.value);
+      setError(f.id, !ok);
+      if (!ok) valid = false;
+    });
+    return valid;
+  }
+
+  async function predict() {
+    const errorCard = document.getElementById('errorCard');
+    const resultCard = document.getElementById('resultCard');
+    errorCard.classList.remove('visible');
+    resultCard.classList.remove('visible');
+
+    if (!validate()) {
+      errorCard.textContent = 'Please fill in all fields correctly before predicting.';
+      errorCard.classList.add('visible');
+      return;
+    }
+
+    const btn = document.getElementById('predictBtn');
+    btn.disabled = true;
+    btn.innerHTML = 'Predicting <span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>';
+
+    const payload = {
+      vehicle_age: parseInt(val('vehicle_age')),
+      km_driven: parseInt(val('km_driven')),
+      seller_type: parseInt(val('seller_type')),
+      fuel_type: parseInt(val('fuel_type')),
+      transmission_type: parseInt(val('transmission_type')),
+      mileage: parseFloat(val('mileage')),
+      engine: parseFloat(val('engine')),
+      max_power: parseFloat(val('max_power')),
+      seats: parseInt(val('seats')),
+    };
+
+    try {
+      const res = await fetch(`${API_URL}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Prediction failed');
+      }
+
+      const data = await res.json();
+
+      document.getElementById('resultPrice').textContent = data.predicted_price_formatted;
+
+      const fuelLabels = { 0:'CNG', 1:'Diesel', 2:'Electric', 3:'LPG', 4:'Petrol' };
+      const transLabels = { 0:'Automatic', 1:'Manual' };
+      const sellerLabels = { 0:'Dealer', 1:'Individual', 2:'Trustmark Dealer' };
+
+      document.getElementById('resultMeta').innerHTML = `
+        <div class="meta-item"><span>Age</span><span>${payload.vehicle_age} yr${payload.vehicle_age !== 1 ? 's' : ''}</span></div>
+        <div class="meta-item"><span>Km driven</span><span>${payload.km_driven.toLocaleString()} km</span></div>
+        <div class="meta-item"><span>Fuel</span><span>${fuelLabels[payload.fuel_type]}</span></div>
+        <div class="meta-item"><span>Transmission</span><span>${transLabels[payload.transmission_type]}</span></div>
+        <div class="meta-item"><span>Engine</span><span>${payload.engine} cc</span></div>
+        <div class="meta-item"><span>Power</span><span>${payload.max_power} bhp</span></div>
+      `;
+
+      resultCard.classList.add('visible');
+    } catch (err) {
+      errorCard.textContent = `Error: ${err.message}. Make sure your backend is running at ${API_URL}`;
+      errorCard.classList.add('visible');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Predict Price';
+    }
+  }
+</script>
+</body>
+</html>

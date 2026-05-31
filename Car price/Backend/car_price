@@ -1,0 +1,88 @@
+# 1. Import Libraries
+
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import LabelEncoder
+import joblib
+
+# 2. Load Data
+
+df = pd.read_csv('cardekho_dataset.csv')
+print(f"Original Data: {df.shape}")
+
+# 3. Filter Outliers
+
+df = df[df['selling_price'] < 5000000]
+df = df[df['selling_price'] > 100000]
+print(f"After filtering: {df.shape}")
+
+# 4. Clean Data
+
+df = df.drop(['Unnamed: 0', 'car_name', 'brand', 'model'], axis=1)
+
+# Handle missing values
+df['km_driven'] = df['km_driven'].fillna(df['km_driven'].median())
+df['mileage'] = df['mileage'].fillna(df['mileage'].median())
+df['engine'] = df['engine'].fillna(df['engine'].median())
+df['max_power'] = df['max_power'].fillna(df['max_power'].median())
+df['seats'] = df['seats'].fillna(df['seats'].median())
+
+# 5. Encode Categorical Data
+
+categorical_cols = ['seller_type', 'fuel_type', 'transmission_type']
+
+label_encoder = LabelEncoder()
+
+for col in categorical_cols:
+    df[col] = label_encoder.fit_transform(df[col])
+
+# 6. Prepare Features & Target
+
+X = df.drop('selling_price', axis=1)
+y = df['selling_price']
+
+# 7. Split Data
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# 8. Train Model
+
+model = GradientBoostingRegressor(
+    n_estimators=200,
+    max_depth=10,
+    learning_rate=0.1,
+    random_state=42
+)
+model.fit(X_train, y_train)
+# Save the model after training
+joblib.dump(model, 'car_price_model.pkl')
+print("Model saved!")
+
+# 9. Evaluate
+
+y_pred = model.predict(X_test)
+print(f"R² Score: {r2_score(y_test, y_pred):.2f}")
+print(f"RMSE: {np.sqrt(mean_squared_error(y_test, y_pred)):.2f}")
+
+# 10. Predict New Car
+
+new_car = {
+    'vehicle_age': 5,
+    'km_driven': 50000,
+    'seller_type': 0,
+    'fuel_type': 0,
+    'transmission_type': 0,
+    'mileage': 20.0,
+    'engine': 1500.0,
+    'max_power': 100.0,
+    'seats': 5
+}
+
+new_car_df = pd.DataFrame([new_car])
+predicted_price = model.predict(new_car_df)
+print(f"Predicted Price: ₹{predicted_price[0]:,.2f}")
